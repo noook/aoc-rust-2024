@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 advent_of_code::solution!(1);
 
 fn parse_input(input: &str) -> Input {
@@ -14,15 +16,14 @@ type Input = Vec<u64>;
 pub fn part_one(input: &str) -> Option<u64> {
     let parsed = parse_input(input);
 
-    for i in 0..parsed.len() {
-        for j in i + 1..parsed.len() {
-            let (a, b) = (parsed[i], parsed[j]);
-            if a + b == 2020 {
-                return Some(a * b);
-            }
+    let mut seen = HashSet::with_capacity(parsed.len());
+    for x in parsed {
+        let need = 2020 - x;
+        if seen.contains(&need) {
+            return Some(x * need);
         }
+        seen.insert(x);
     }
-
     None
 }
 
@@ -30,16 +31,16 @@ pub fn part_two(input: &str) -> Option<u64> {
     let parsed = parse_input(input);
 
     for i in 0..parsed.len() {
-        for j in i + 1..parsed.len() {
-            for k in j + 1..parsed.len() {
-                let (a, b, c) = (parsed[i], parsed[j], parsed[k]);
-                if a + b + c == 2020 {
-                    return Some(a * b * c);
-                }
+        let target = 2020 - parsed[i];
+        let mut seen = HashSet::with_capacity(parsed.len());
+        for &x in &parsed[i+1..] {
+            let need = target - x;
+            if seen.contains(&need) {
+                return Some(parsed[i] * x * need);
             }
+            seen.insert(x);
         }
     }
-
     None
 }
 
