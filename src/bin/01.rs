@@ -3,12 +3,11 @@ use std::collections::HashSet;
 advent_of_code::solution!(1);
 
 fn parse_input(input: &str) -> Input {
-     input
+    input
         .trim()
         .split("\n")
         .map(|line| line.parse::<u64>().unwrap())
         .collect()
-
 }
 
 type Input = Vec<u64>;
@@ -33,7 +32,7 @@ pub fn part_two(input: &str) -> Option<u64> {
     for i in 0..parsed.len() {
         let target = 2020 - parsed[i];
         let mut seen = HashSet::with_capacity(parsed.len());
-        for &x in &parsed[i+1..] {
+        for &x in &parsed[i + 1..] {
             let need = target - x;
             if seen.contains(&need) {
                 return Some(parsed[i] * x * need);
@@ -91,7 +90,7 @@ where
     // Try each remaining number
     for (i, &num) in numbers.iter().enumerate() {
         current_combination.push(num);
-        
+
         // Recursively try to find the remaining numbers
         if let Some(result) = find_combination_recursive_helper(
             &numbers[i + 1..],
@@ -102,7 +101,7 @@ where
         ) {
             return Some(result);
         }
-        
+
         // Backtrack
         current_combination.pop();
     }
