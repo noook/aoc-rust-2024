@@ -44,7 +44,7 @@ pub fn part_one(input: &str) -> Option<u64> {
 
     let count = lines
         .filter(|line| {
-            let char_count = line.password.chars().filter(|&c| c == line.char).count();
+            let char_count: usize = line.password.chars().filter(|c| *c == line.char).count();
             (line.min..=line.max).contains(&char_count)
         })
         .count() as u64;
@@ -56,10 +56,11 @@ pub fn part_two(input: &str) -> Option<u64> {
     let lines = parse_input(input);
     let count = lines
         .filter(|line| {
-            let a = line.password.chars().nth(line.min - 1);
-            let b = line.password.chars().nth(line.max - 1);
+            let chars: Vec<char> = line.password.chars().collect();
+            let a = chars.get(line.min - 1);
+            let b = chars.get(line.max - 1);
             match (a, b) {
-                (Some(c1), Some(c2)) => (line.char == c1) ^ (line.char == c2),
+                (Some(&c1), Some(&c2)) => (c1 == line.char) ^ (c2 == line.char),
                 _ => false,
             }
         })
