@@ -1,50 +1,72 @@
+use regex::Regex;
+
 advent_of_code::solution!(3);
 
-pub fn parse_input(input: &str) -> Vec<&str> {
-    input.trim().split("\n").collect()
+#[derive(Debug, Clone)]
+enum Instruction {
+    Mul(u64, u64),
+    Do,
+    Dont,
 }
 
-struct Slope {
-    right: usize,
-    down: usize,
-}
-
-fn run_slope(map: &[&str], slope: &Slope) -> u64 {
-    let mut count: u64 = 0;
-
-    for (i, j) in (0..).step_by(slope.right).zip((0..map.len()).step_by(slope.down)) {
-        let char = map[j].chars().nth(i % map[j].len()).unwrap();
-        if char == '#' {
-            count += 1;
-        }
+fn parse_instructions(input: &str) -> Vec<Instruction> {
+    let re = Regex::new(r"do\(\)|don't\(\)|mul\((\d{1,3}),(\d{1,3})\)").unwrap();
+    
+    let mut instructions = Vec::new();
+    
+    for cap in re.captures_iter(input) {
+        let full_match = cap.get(0).unwrap().as_str();
+        
+        let instruction = match full_match {
+            "do()" => Instruction::Do,
+            "don't()" => Instruction::Dont,
+            _ if full_match.starts_with("mul(") => {
+                let x: u64 = cap.get(1).unwrap().as_str().parse().unwrap();
+                let y: u64 = cap.get(2).unwrap().as_str().parse().unwrap();
+                Instruction::Mul(x, y)
+            }
+            _ => continue, // Skip invalid matches (shouldn't happen with our regex)
+        };
+        
+        instructions.push(instruction);
     }
-    count
+    
+    instructions
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
-    let lines: Vec<&str> = parse_input(input);
-    let count: u64 = run_slope(&lines, &Slope { right: 3, down: 1 });
-
-    Some(count)
+    let instructions = parse_instructions(input);
+    
+    let sum = instructions
+        .into_iter()
+        .filter_map(|inst| match inst {
+            Instruction::Mul(x, y) => Some(x * y),
+            _ => None,
+        })
+        .sum();
+    
+    Some(sum)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let slopes: [Slope; 5] = [
-        Slope { right: 1, down: 1 },
-        Slope { right: 3, down: 1 },
-        Slope { right: 5, down: 1 },
-        Slope { right: 7, down: 1 },
-        Slope { right: 1, down: 2 },
-    ];
-
-    let map = parse_input(input);
-
-    let result: u64 = slopes.iter().fold(1, |acc, slope| {
-        let count: u64 = run_slope(&map, slope);
-        count * acc
-    });
-
-    Some(result)
+    let instructions = parse_instructions(input);
+    
+    let mut sum = 0;
+    let mut active = true;
+    
+    for instruction in instructions {
+        match instruction {
+            Instruction::Do => active = true,
+            Instruction::Dont => active = false,
+            Instruction::Mul(x, y) => {
+                if active {
+                    sum += x * y;
+                }
+            }
+        }
+    }
+    
+    Some(sum)
 }
 
 #[cfg(test)]
@@ -53,13 +75,13 @@ mod tests {
 
     #[test]
     fn test_part_one() {
-        let result: Option<u64> = part_one(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(7));
+        let result = part_one(&advent_of_code::template::read_file_part("examples", DAY, 1));
+        assert_eq!(result, Some(161));
     }
 
     #[test]
     fn test_part_two() {
-        let result: Option<u64> = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(336));
+        let result = part_two(&advent_of_code::template::read_file_part("examples", DAY, 2));
+        assert_eq!(result, Some(48));
     }
 }

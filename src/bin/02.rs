@@ -1,72 +1,77 @@
-use core::fmt;
-use std::fmt::Debug;
-
-use regex::Regex;
-
 advent_of_code::solution!(2);
 
-struct PasswordLine {
-    min: usize,
-    max: usize,
-    char: char,
-    password: String,
+pub fn parse_input(input: &str) -> Vec<Vec<u64>> {
+    input.trim().lines().map(|line| {
+        line.split_whitespace().map(|x| x.parse::<u64>().unwrap()).collect()
+    }).collect()
 }
 
-impl Debug for PasswordLine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "\nPasswordLine {{ min: {}, max: {}, char: {}, password: {} }}",
-            self.min, self.max, self.char, self.password
-        )
+pub fn is_sequence_safe(levels: &[u64]) -> bool {
+    if levels.len() <= 1 {
+        return true;
     }
+
+    let mut increasing = true;
+    let mut decreasing = true;
+
+
+    for window in levels.windows(2) {
+        let diff = window[0].abs_diff(window[1]);
+        
+        if !(1..=3).contains(&diff) {
+            return false;
+        }
+
+        if window[0] > window[1] {
+            increasing = false;
+        } else if window[0] < window[1] {
+            decreasing = false;
+        } else {
+            return false;
+        }
+
+        if !increasing && !decreasing {
+            return false;
+        }
+    }
+
+    true
 }
 
-fn parse_input(input: &str) -> impl Iterator<Item = PasswordLine> + '_ {
-    let re =
-        Regex::new(r"(?P<min>\d+)-(?P<max>\d+)\s(?P<char>[a-z]):\s(?P<password>[a-z]+)").unwrap();
-    input
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(move |line| {
-            let caps = re.captures(line).unwrap();
-            PasswordLine {
-                min: caps["min"].parse().unwrap(),
-                max: caps["max"].parse().unwrap(),
-                char: caps["char"].parse().unwrap(),
-                password: caps["password"].to_string(),
-            }
-        })
+pub fn part_one(_input: &str) -> Option<u64> {
+    let input = parse_input(_input);
+
+    let result = input.iter()
+        .filter(|line| is_sequence_safe(line))
+        .count();
+
+    Some(result as u64)
 }
 
-pub fn part_one(input: &str) -> Option<u64> {
-    let lines = parse_input(input);
-
-    let count = lines
-        .filter(|line| {
-            let char_count: usize = line.password.chars().filter(|c| *c == line.char).count();
-            (line.min..=line.max).contains(&char_count)
-        })
-        .count() as u64;
-
-    Some(count)
+fn is_safe_with_dampener(levels: &[u64]) -> bool {
+    if is_sequence_safe(levels) {
+        return true;
+    }
+    
+    for i in 0..levels.len() {
+        let mut modified = levels.to_vec();
+        modified.remove(i);
+        if is_sequence_safe(&modified) {
+            return true;
+        }
+    }
+    
+    false
 }
 
-pub fn part_two(input: &str) -> Option<u64> {
-    let lines = parse_input(input);
-    let count = lines
-        .filter(|line| {
-            let chars: Vec<char> = line.password.chars().collect();
-            let a = chars.get(line.min - 1);
-            let b = chars.get(line.max - 1);
-            match (a, b) {
-                (Some(&c1), Some(&c2)) => (c1 == line.char) ^ (c2 == line.char),
-                _ => false,
-            }
-        })
-        .count() as u64;
-
-    Some(count)
+pub fn part_two(_input: &str) -> Option<u64> {
+    let input = parse_input(_input);
+    
+    let result = input.iter()
+        .filter(|line| is_safe_with_dampener(line))
+        .count();
+    
+    Some(result as u64)
 }
 
 #[cfg(test)]
@@ -82,6 +87,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(1));
+        assert_eq!(result, Some(4));
     }
 }
