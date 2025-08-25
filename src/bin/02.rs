@@ -1,9 +1,15 @@
 advent_of_code::solution!(2);
 
 pub fn parse_input(input: &str) -> Vec<Vec<u64>> {
-    input.trim().lines().map(|line| {
-        line.split_whitespace().map(|x| x.parse::<u64>().unwrap()).collect()
-    }).collect()
+    input
+        .trim()
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .map(|x| x.parse::<u64>().unwrap())
+                .collect()
+        })
+        .collect()
 }
 
 pub fn is_sequence_safe(levels: &[u64]) -> bool {
@@ -14,10 +20,9 @@ pub fn is_sequence_safe(levels: &[u64]) -> bool {
     let mut increasing = true;
     let mut decreasing = true;
 
-
     for window in levels.windows(2) {
         let diff = window[0].abs_diff(window[1]);
-        
+
         if !(1..=3).contains(&diff) {
             return false;
         }
@@ -41,9 +46,7 @@ pub fn is_sequence_safe(levels: &[u64]) -> bool {
 pub fn part_one(_input: &str) -> Option<u64> {
     let input = parse_input(_input);
 
-    let result = input.iter()
-        .filter(|line| is_sequence_safe(line))
-        .count();
+    let result = input.iter().filter(|line| is_sequence_safe(line)).count();
 
     Some(result as u64)
 }
@@ -52,7 +55,7 @@ fn is_safe_with_dampener(levels: &[u64]) -> bool {
     if is_sequence_safe(levels) {
         return true;
     }
-    
+
     for i in 0..levels.len() {
         let mut modified = levels.to_vec();
         modified.remove(i);
@@ -60,17 +63,18 @@ fn is_safe_with_dampener(levels: &[u64]) -> bool {
             return true;
         }
     }
-    
+
     false
 }
 
 pub fn part_two(_input: &str) -> Option<u64> {
     let input = parse_input(_input);
-    
-    let result = input.iter()
+
+    let result = input
+        .iter()
         .filter(|line| is_safe_with_dampener(line))
         .count();
-    
+
     Some(result as u64)
 }
 
