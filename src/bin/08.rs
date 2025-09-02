@@ -81,6 +81,42 @@ fn calc_antinodes(a1: Coordinates, a2: Coordinates) -> (Coordinates, Coordinates
     )
 }
 
+fn calc_all_antinodes(a1: Coordinates, a2: Coordinates, bounds: &MapBounds) -> Vec<Coordinates> {
+    let mut antinodes = Vec::new();
+    let (x1, y1, x2, y2) = (a1.x as i32, a1.y as i32, a2.x as i32, a2.y as i32);
+    let (dx, dy) = (x2 - x1, y2 - y1);
+    
+    // Generate antinodes in the negative direction (from a1 backwards)
+    let mut i = 1;
+    loop {
+        let x = x1 - i * dx;
+        let y = y1 - i * dy;
+        
+        if x < 0 || y < 0 || x >= bounds.width as i32 || y >= bounds.height as i32 {
+            break;
+        }
+        
+        antinodes.push(Coordinates { x: x as usize, y: y as usize });
+        i += 1;
+    }
+    
+    // Generate antinodes in the positive direction (from a2 forwards)
+    let mut i = 1;
+    loop {
+        let x = x2 + i * dx;
+        let y = y2 + i * dy;
+        
+        if x < 0 || y < 0 || x >= bounds.width as i32 || y >= bounds.height as i32 {
+            break;
+        }
+        
+        antinodes.push(Coordinates { x: x as usize, y: y as usize });
+        i += 1;
+    }
+    
+    antinodes
+}
+
 fn is_in_bounds(coordinates: &Coordinates, bounds: &MapBounds) -> bool {
     coordinates.x < bounds.width && coordinates.y < bounds.height
 }
@@ -90,7 +126,7 @@ pub fn part_one(_input: &str) -> Option<u64> {
     let mut visited = vec![vec![false; parsed.bounds.width]; parsed.bounds.height];
     let mut count = 0;
     
-    for (c, coordinates) in parsed.coordinates.iter() {
+    for (_c, coordinates) in parsed.coordinates.iter() {
         let combinations = combinations(coordinates, 2);
 
         for combination in combinations {
@@ -109,7 +145,35 @@ pub fn part_one(_input: &str) -> Option<u64> {
 }
 
 pub fn part_two(_input: &str) -> Option<u64> {
-    None
+    let parsed = parse_input(_input);
+    let mut visited = vec![vec![false; parsed.bounds.width]; parsed.bounds.height];
+    let mut count = 0;
+    
+    for (_c, coordinates) in parsed.coordinates.iter() {
+        let combinations = combinations(coordinates, 2);
+
+        for combination in combinations {
+            // Mark the original antenna positions as antinodes
+            if !visited[combination[0].y][combination[0].x] {
+                visited[combination[0].y][combination[0].x] = true;
+                count += 1;
+            }
+            if !visited[combination[1].y][combination[1].x] {
+                visited[combination[1].y][combination[1].x] = true;
+                count += 1;
+            }
+
+            // Calculate all antinodes in both directions until out of bounds
+            let all_antinodes = calc_all_antinodes(combination[0].clone(), combination[1].clone(), &parsed.bounds);
+            for antinode in all_antinodes {
+                if !visited[antinode.y][antinode.x] {
+                    visited[antinode.y][antinode.x] = true;
+                    count += 1;
+                }
+            }
+        }
+    }
+    Some(count)
 }
 
 #[cfg(test)]
@@ -125,6 +189,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(34));
     }
 }
