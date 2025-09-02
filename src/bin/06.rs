@@ -1,5 +1,5 @@
-use std::fmt;
 use std::collections::HashSet;
+use std::fmt;
 
 advent_of_code::solution!(6);
 
@@ -38,7 +38,12 @@ enum Direction {
 
 // Precomputed direction deltas for faster access - matches enum order: Up, Down, Left, Right
 const DELTAS: [(i8, i8); 4] = [(0, -1), (0, 1), (-1, 0), (1, 0)]; // Up, Down, Left, Right
-const TURN_RIGHT: [Direction; 4] = [Direction::Right, Direction::Left, Direction::Up, Direction::Down];
+const TURN_RIGHT: [Direction; 4] = [
+    Direction::Right,
+    Direction::Left,
+    Direction::Up,
+    Direction::Down,
+];
 
 impl Direction {
     #[inline(always)]
@@ -46,7 +51,7 @@ impl Direction {
         DELTAS[self as usize]
     }
 
-    #[inline(always)] 
+    #[inline(always)]
     fn turn_right(self) -> Self {
         TURN_RIGHT[self as usize]
     }
@@ -62,8 +67,6 @@ struct Position {
     x: usize,
     y: usize,
 }
-
-
 
 #[derive(Clone)]
 struct Map(Vec<Vec<char>>);
@@ -103,7 +106,7 @@ fn patrol(state: &MapState) -> u64 {
     let mut count = 1u64;
     let mut visited = vec![vec![false; state.map[0].len()]; state.map.len()];
     visited[state.position.y][state.position.x] = true;
-    
+
     let mut position = state.position;
     let mut direction = state.direction;
 
@@ -127,14 +130,17 @@ fn patrol(state: &MapState) -> u64 {
             continue;
         }
 
-        position = Position { x: next_x, y: next_y };
-        
+        position = Position {
+            x: next_x,
+            y: next_y,
+        };
+
         if !visited[position.y][position.x] {
             visited[position.y][position.x] = true;
             count += 1;
         }
     }
-    
+
     count
 }
 
@@ -142,7 +148,7 @@ fn patrol(state: &MapState) -> u64 {
 fn get_patrol_path(state: &MapState) -> HashSet<Position> {
     let mut visited = HashSet::new();
     visited.insert(state.position);
-    
+
     let mut position = state.position;
     let mut direction = state.direction;
 
@@ -166,7 +172,10 @@ fn get_patrol_path(state: &MapState) -> HashSet<Position> {
             continue;
         }
 
-        position = Position { x: next_x, y: next_y };
+        position = Position {
+            x: next_x,
+            y: next_y,
+        };
         visited.insert(position);
     }
 
@@ -177,10 +186,10 @@ fn get_patrol_path(state: &MapState) -> HashSet<Position> {
 fn creates_loop(state: &MapState, obstacle_x: usize, obstacle_y: usize) -> bool {
     let height = state.map.len();
     let width = state.map[0].len();
-    
+
     // Flat array: visited[y * width * 4 + x * 4 + direction] for better cache locality
     let mut visited = vec![false; height * width * 4];
-    
+
     let mut position = state.position;
     let mut direction = state.direction;
     let mut steps = 0;
@@ -194,7 +203,7 @@ fn creates_loop(state: &MapState, obstacle_x: usize, obstacle_y: usize) -> bool 
 
         // Calculate flat index: y * width * 4 + x * 4 + direction
         let idx = position.y * width * 4 + position.x * 4 + direction.index();
-        
+
         // Check if we've seen this state before (LOOP!)
         if visited[idx] {
             return true; // Loop detected!
@@ -265,6 +274,4 @@ mod tests {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(6));
     }
-
-
 }
