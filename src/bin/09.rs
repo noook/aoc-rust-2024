@@ -134,11 +134,7 @@ impl Disk {
         }
     }
 
-    fn find_suitable_space(
-        &self,
-        needed_size: usize,
-        before_position: usize,
-    ) -> Option<usize> {
+    fn find_suitable_space(&self, needed_size: usize, before_position: usize) -> Option<usize> {
         // Since free_spaces is sorted, we can use early termination
         for (idx, space) in self.free_spaces.iter().enumerate() {
             if space.start >= before_position {
