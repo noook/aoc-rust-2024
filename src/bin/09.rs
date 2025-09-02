@@ -10,39 +10,43 @@ fn parse_input(input: &str) -> Vec<u64> {
 
 pub fn part_one(_input: &str) -> Option<u64> {
     let input = parse_input(_input);
-    let mut chain = String::new();
 
-    let mut idx = 0;
-    let mut iter = input.iter();
-    while let Some(&file_len) = iter.next() {
-        let file_id = idx;
-        chain.push_str(&file_id.to_string().repeat(file_len as usize));
-        idx += 1;
-        if let Some(&space_len) = iter.next() {
-            chain.push_str(&".".repeat(space_len as usize));
+    // Create a vector of blocks where each block is either Some(file_id) or None (empty)
+    let mut blocks = Vec::new();
+    let mut file_id = 0;
+
+    for (i, &len) in input.iter().enumerate() {
+        if i % 2 == 0 {
+            // File blocks
+            for _ in 0..len {
+                blocks.push(Some(file_id));
+            }
+            file_id += 1;
+        } else {
+            // Empty space
+            for _ in 0..len {
+                blocks.push(None);
+            }
         }
     }
 
     let mut i = 0;
-    let mut j = chain.len() - 1;
-
-    let chars: Vec<char> = chain.chars().collect();
+    let mut j = blocks.len() - 1;
 
     // Compact the disk and calculate checksum in one pass
     let mut result = 0;
     while i <= j {
-        if chars[i] != '.' {
+        if let Some(id) = blocks[i] {
             // Element is in correct position
-            let file_id = chars[i].to_digit(10).unwrap() as u64;
-            result += i as u64 * file_id;
+            result += i as u64 * id;
             i += 1;
-        } else if chars[j] == '.' {
+        } else if blocks[j].is_none() {
             // Skip empty space from the right
             j -= 1;
         } else {
             // Use element from j at position i
-            let file_id = chars[j].to_digit(10).unwrap() as u64;
-            result += i as u64 * file_id;
+            let id = blocks[j].unwrap();
+            result += i as u64 * id;
             i += 1;
             j -= 1;
         }
