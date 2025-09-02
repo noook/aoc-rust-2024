@@ -1,14 +1,25 @@
 <img src="./.assets/christmas_ferris.png" width="164">
 
-# 🎄 Advent of Code {year}
+# 🎄 Advent of Code 2024 - Rust Learning Journey
 
-Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.rust-lang.org/).
+> **A portfolio project showcasing systematic learning of Rust, algorithm optimization, and AI-assisted development**
+
+This repository documents my approach to mastering Rust through [Advent of Code](https://adventofcode.com/) challenges, emphasizing performance optimization, memory efficiency, and modern development practices with AI assistance.
 
 <!--- advent_readme_stars table --->
 
-<!--- benchmarking table --->
-## Benchmarks
+## 🎯 Learning Objectives
 
+- **Rust Mastery**: Deep dive into Rust's ownership model, type system, and zero-cost abstractions
+- **Algorithm Optimization**: Focus on computational efficiency and performance benchmarking
+- **Memory Management**: Explore heap allocation patterns and memory optimization techniques
+- **AI-Enhanced Learning**: Use AI as a learning partner for code review, refactoring guidance, and optimization insights after independent problem solving
+
+## 🚀 Performance Benchmarks
+
+All solutions are optimized for performance with comprehensive benchmarking. Execution times measured on optimized builds:
+
+<!--- benchmarking table --->
 | Day | Part 1 | Part 2 |
 | :---: | :---: | :---:  |
 | [Day 1](./src/bin/01.rs) | `4.1µs` | `40.9µs` |
@@ -24,28 +35,107 @@ Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.
 **Total: 82.71ms**
 <!--- benchmarking table --->
 
+## 🧠 Development Approach
+
+### Independent Problem Solving First
+- **Self-Reliant Analysis**: Initially solve each problem independently, focusing on understanding constraints and developing algorithmic solutions
+- **Original Implementation**: Write first-pass solutions using my own reasoning and Rust knowledge
+- **Personal Learning**: Build problem-solving intuition and strengthen core programming skills through independent work
+
+### AI-Enhanced Learning & Optimization
+- **Code Review & Learning**: Use AI to analyze my solutions and learn about alternative approaches or Rust idioms I might have missed
+- **Refactoring Guidance**: Leverage AI for suggesting optimizations while maintaining code readability and safety
+- **Performance Analysis**: Apply AI to interpret DHAT profiling results and understand memory allocation patterns
+- **Knowledge Expansion**: Use AI as a learning partner to deepen understanding of algorithms and Rust-specific optimizations
+
+### Performance-First Methodology
+1. **Benchmark-Driven Development**: Every solution includes comprehensive performance measurements
+2. **Memory Profiling**: Regular heap allocation analysis using DHAT integration
+3. **Algorithmic Optimization**: Focus on optimal time/space complexity for each problem
+4. **Iterative Refinement**: Multiple optimization passes guided by profiling data
+
+### Rust Learning Focus Areas
+- **Zero-Cost Abstractions**: Leveraging Rust's performance guarantees
+- **Memory Safety**: Exploring ownership, borrowing, and lifetime management
+- **Type System**: Utilizing advanced type features for compile-time guarantees
+
+## 🛠️ Technical Implementation
+
+### Code Architecture
+- **Modular Design**: Each day's solution is a standalone binary with dedicated input/example files
+- **Test-Driven Development**: Comprehensive unit tests against example inputs for all solutions
+- **Performance Monitoring**: Integrated benchmarking with automatic README updates
+- **Memory Profiling**: DHAT integration for heap allocation analysis
+
+### Rust-Specific Techniques
+- **Iterator Chains**: Extensive use of functional programming patterns for clean, efficient code
+- **Pattern Matching**: Leveraging Rust's powerful pattern matching for elegant problem decomposition
+- **Type Safety**: Using strong typing to prevent runtime errors and encode invariants
+- **Zero-Copy Operations**: Minimizing allocations through strategic use of slices and references
+
+### Development Tools & Workflow
+- **Cargo Integration**: Custom commands for scaffolding, testing, and benchmarking
+- **CI/CD**: Automated testing, linting, and performance tracking
+- **Profiling**: Integration with DHAT for detailed memory analysis
+- **Version Control**: Systematic commit patterns documenting optimization journey
+
 ---
 
-## Template setup
+## 📚 Getting Started
 
-This template supports all major OS (macOS, Linux, Windows).
+### Quick Start
+```bash
+# Clone and setup
+git clone <repository-url>
+cd advent-of-code-rust
 
-###  📝 Create your repository
+# Run a specific day's solution
+cargo solve 01
 
-1.  Open [the template repository](https://github.com/fspoettel/advent-of-code-rust) on Github.
-2.  Click [Use this template](https://github.com/fspoettel/advent-of-code-rust/generate) and create your repository.
-3.  Clone your repository to your computer.
-4.  If you are solving a previous year's advent of code, change the `AOC_YEAR` variable in `.cargo/config.toml` to reflect the year you are solving.
+# Benchmark performance
+cargo time 01 --store
 
-### 💻 Setup rust
+# Run all tests
+cargo test
+```
 
-1.  Install the [Rust toolchain](https://www.rust-lang.org/tools/install).
-2.  (recommended) Install the [rust-analyzer](https://rust-analyzer.github.io/manual.html) extension for your code editor.
-3.  (optional) Install a native debugger. If you are using VS Code, [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) is a good option.
+### Development Environment Setup
+
+**Prerequisites:**
+1. Install the [Rust toolchain](https://www.rust-lang.org/tools/install)
+2. (Recommended) Install [rust-analyzer](https://rust-analyzer.github.io/manual.html) for your editor
+3. (Optional) Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) for debugging
+
+This project supports all major platforms (macOS, Linux, Windows) and includes comprehensive tooling for performance analysis and development workflow optimization.
 
 ---
 
-✨ You can start solving puzzles now! Head to the [Usage section](#usage) to see how to use this template. If you like, you can configure [some optional features](#optional-template-features).
+## 🌟 Portfolio Highlights
+
+### Key Achievements
+- **Performance Optimization**: Solutions consistently achieve microsecond-level execution times
+- **Memory Efficiency**: Zero-allocation solutions where possible, with detailed profiling of necessary allocations
+- **Code Quality**: Comprehensive test coverage, documentation, and adherence to Rust best practices
+- **AI-Enhanced Learning**: Strategic use of AI for post-solution analysis, refactoring guidance, and learning acceleration
+
+### Skills Demonstrated
+- **Systems Programming**: Low-level optimization and memory management in Rust
+- **Algorithm Design**: Implementation of efficient algorithms for complex computational problems
+- **Performance Engineering**: Systematic benchmarking and optimization methodology
+- **Modern Development**: Strategic AI integration for learning, automated testing, and continuous performance monitoring
+
+### Learning Outcomes
+This project demonstrates my commitment to:
+- **Continuous Learning**: Systematic skill development through challenging programming exercises
+- **Quality Engineering**: Focus on performance, safety, and maintainability
+- **Tool Mastery**: Effective use of modern development tools and strategic AI collaboration for learning
+- **Documentation**: Clear communication of technical concepts and methodologies
+
+---
+
+## 📖 Development Guide
+
+The following sections provide detailed documentation for using this template and development environment.
 
 ## Usage
 
