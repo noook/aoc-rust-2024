@@ -15,22 +15,16 @@ impl OrderingRules {
     }
 
     fn add_rule(&mut self, before: u32, after: u32) {
-        self.successors
-            .entry(before)
-            .or_default()
-            .insert(after);
+        self.successors.entry(before).or_default().insert(after);
     }
 
     fn is_valid_order(&self, update: &[u32]) -> bool {
-        update
-            .iter()
-            .enumerate()
-            .all(|(i, &page)| {
-                // Check that all pages after this one are allowed to come after it
-                update[i + 1..]
-                    .iter()
-                    .all(|&later_page| !self.violates_rule(later_page, page))
-            })
+        update.iter().enumerate().all(|(i, &page)| {
+            // Check that all pages after this one are allowed to come after it
+            update[i + 1..]
+                .iter()
+                .all(|&later_page| !self.violates_rule(later_page, page))
+        })
     }
 
     /// Returns true if placing `first` before `second` violates any rule
@@ -43,33 +37,35 @@ impl OrderingRules {
     /// Fixes the order of an invalid update using topological sorting
     fn fix_order(&self, update: &[u32]) -> Vec<u32> {
         let mut pages = update.to_vec();
-        
+
         // Sort using a comparator based on the ordering rules
         pages.sort_by(|&a, &b| self.compare_pages(a, b));
-        
+
         pages
     }
 
     /// Compares two pages according to the ordering rules
     fn compare_pages(&self, a: u32, b: u32) -> std::cmp::Ordering {
         use std::cmp::Ordering;
-        
+
         // Check if a must come before b
-        if self.successors
+        if self
+            .successors
             .get(&a)
             .map_or(false, |successors| successors.contains(&b))
         {
             return Ordering::Less;
         }
-        
+
         // Check if b must come before a
-        if self.successors
+        if self
+            .successors
             .get(&b)
             .map_or(false, |successors| successors.contains(&a))
         {
             return Ordering::Greater;
         }
-        
+
         // No ordering constraint between these pages
         Ordering::Equal
     }
@@ -95,7 +91,7 @@ fn parse_input(input: &str) -> Option<(OrderingRules, Vec<Vec<u32>>)> {
         rules.add_rule(before, after);
     }
 
-    // Parse updates  
+    // Parse updates
     let updates: Option<Vec<Vec<u32>>> = updates_section
         .lines()
         .map(|line| {
@@ -162,10 +158,10 @@ mod tests {
         let mut rules = OrderingRules::new();
         rules.add_rule(47, 53);
         rules.add_rule(97, 13);
-        
+
         assert!(rules.is_valid_order(&[47, 53]));
         assert!(!rules.is_valid_order(&[53, 47]));
-        
+
         let fixed = rules.fix_order(&[53, 47]);
         assert_eq!(fixed, vec![47, 53]);
     }
