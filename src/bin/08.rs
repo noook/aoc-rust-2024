@@ -61,7 +61,13 @@ impl Point {
 /// Calculate antinodes for a pair of antennas
 /// - `min_step`: `0` to include antennas, `1` to exclude them
 /// - `max_steps`: `Some(n)` to limit steps, `None` for unlimited
-fn calc_antinodes(a1: Point, a2: Point, bounds: Bounds, min_step: i32, max_steps: Option<usize>) -> Vec<Point> {
+fn calc_antinodes(
+    a1: Point,
+    a2: Point,
+    bounds: Bounds,
+    min_step: i32,
+    max_steps: Option<usize>,
+) -> Vec<Point> {
     let mut antinodes = Vec::new();
     let dx = a2.x - a1.x;
     let dy = a2.y - a1.y;
