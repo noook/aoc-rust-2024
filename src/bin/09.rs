@@ -8,10 +8,7 @@ fn parse_input(input: &str) -> Vec<u64> {
         .collect()
 }
 
-pub fn part_one(_input: &str) -> Option<u64> {
-    let input = parse_input(_input);
-
-    // Create a vector of blocks where each block is either Some(file_id) or None (empty)
+fn create_blocks(input: &[u64]) -> Vec<Option<u64>> {
     let mut blocks = Vec::new();
     let mut file_id = 0;
 
@@ -30,29 +27,39 @@ pub fn part_one(_input: &str) -> Option<u64> {
         }
     }
 
+    blocks
+}
+
+fn calculate_checksum(blocks: &[Option<u64>]) -> u64 {
+    blocks
+        .iter()
+        .enumerate()
+        .filter_map(|(pos, &block)| block.map(|id| pos as u64 * id))
+        .sum()
+}
+
+pub fn part_one(_input: &str) -> Option<u64> {
+    let input = parse_input(_input);
+    let mut blocks = create_blocks(&input);
+
     let mut i = 0;
     let mut j = blocks.len() - 1;
 
-    // Compact the disk and calculate checksum in one pass
-    let mut result = 0;
-    while i <= j {
-        if let Some(id) = blocks[i] {
-            // Element is in correct position
-            result += i as u64 * id;
+    // Compact the disk by moving blocks one at a time
+    while i < j {
+        if blocks[i].is_some() {
             i += 1;
         } else if blocks[j].is_none() {
-            // Skip empty space from the right
             j -= 1;
         } else {
-            // Use element from j at position i
-            let id = blocks[j].unwrap();
-            result += i as u64 * id;
+            blocks[i] = blocks[j];
+            blocks[j] = None;
             i += 1;
             j -= 1;
         }
     }
 
-    Some(result)
+    Some(calculate_checksum(&blocks))
 }
 
 pub fn part_two(_input: &str) -> Option<u64> {
