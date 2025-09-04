@@ -7,6 +7,7 @@ type Position = (usize, usize);
 
 const DIRECTIONS: [(isize, isize); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 const PEAK_HEIGHT: u8 = 9;
+const TRAILHEAD_HEIGHT: u8 = 0;
 
 fn parse_input(input: &str) -> Grid {
     input
@@ -21,17 +22,18 @@ fn parse_input(input: &str) -> Grid {
 }
 
 /// Check if a position is within grid bounds
+#[inline]
 fn is_valid_position(grid: &Grid, row: isize, col: isize) -> bool {
     row >= 0 && col >= 0 && (row as usize) < grid.len() && (col as usize) < grid[0].len()
 }
 
 /// Get valid neighbors with the expected height
-fn get_valid_neighbors(grid: &Grid, pos: Position, expected_height: u8) -> Vec<Position> {
+fn get_valid_neighbors(grid: &Grid, pos: Position, expected_height: u8) -> impl Iterator<Item = Position> + '_ {
     let (row, col) = pos;
     
     DIRECTIONS
         .iter()
-        .filter_map(|&(dr, dc)| {
+        .filter_map(move |&(dr, dc)| {
             let new_row = row as isize + dr;
             let new_col = col as isize + dc;
             
@@ -46,7 +48,6 @@ fn get_valid_neighbors(grid: &Grid, pos: Position, expected_height: u8) -> Vec<P
                 None
             }
         })
-        .collect()
 }
 
 /// Count all distinct trails from a position to height 9
@@ -59,7 +60,6 @@ fn count_trails(grid: &Grid, pos: Position) -> u64 {
     
     // Sum trails from all valid next positions
     get_valid_neighbors(grid, pos, current_height + 1)
-        .into_iter()
         .map(|next_pos| count_trails(grid, next_pos))
         .sum()
 }
@@ -72,35 +72,29 @@ fn find_reachable_peaks(grid: &Grid, pos: Position) -> HashSet<Position> {
         return HashSet::from([pos]);
     }
     
+    // Collect all reachable peaks from valid next positions
     get_valid_neighbors(grid, pos, current_height + 1)
-        .into_iter()
         .flat_map(|next_pos| find_reachable_peaks(grid, next_pos))
         .collect()
 }
 
-/// Find all trailheads (positions with height 0) in the grid
-fn find_trailheads(grid: &Grid) -> Vec<Position> {
+/// Find all trailheads (positions with height 0) in the grid (optimized version)
+fn find_trailheads(grid: &Grid) -> impl Iterator<Item = Position> + '_ {
     grid.iter()
         .enumerate()
         .flat_map(|(row, line)| {
             line.iter()
                 .enumerate()
                 .filter_map(move |(col, &height)| {
-                    if height == 0 {
-                        Some((row, col))
-                    } else {
-                        None
-                    }
+                    (height == TRAILHEAD_HEIGHT).then_some((row, col))
                 })
         })
-        .collect()
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
     let grid = parse_input(input);
     
     let total_score = find_trailheads(&grid)
-        .into_iter()
         .map(|trailhead| find_reachable_peaks(&grid, trailhead).len() as u64)
         .sum();
     
@@ -111,7 +105,6 @@ pub fn part_two(input: &str) -> Option<u64> {
     let grid = parse_input(input);
     
     let total_rating = find_trailheads(&grid)
-        .into_iter()
         .map(|trailhead| count_trails(&grid, trailhead))
         .sum();
     
