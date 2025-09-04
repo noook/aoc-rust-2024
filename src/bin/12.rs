@@ -1,6 +1,14 @@
 advent_of_code::solution!(12);
 
-fn parse_input(input: &str) -> Vec<Vec<char>> {
+use std::collections::HashSet;
+
+type Position = (usize, usize);
+type Grid = Vec<Vec<char>>;
+type Direction = (i32, i32);
+
+const DIRECTIONS: [Direction; 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+fn parse_input(input: &str) -> Grid {
     input
         .trim()
         .lines()
@@ -8,144 +16,154 @@ fn parse_input(input: &str) -> Vec<Vec<char>> {
         .collect()
 }
 
-const DIRECTIONS: [(i32, i32); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
-
+#[derive(Debug, Clone)]
 struct Region {
-    kind: char,
-    perimeter: u64,
-    area: u64,
-    points: Vec<(usize, usize)>,
+    #[allow(dead_code)]
+    plant_type: char,
+    positions: HashSet<Position>,
 }
 
-fn explore_region(grid: &mut Vec<Vec<char>>, region: &mut Region, start: (i32, i32)) {
-    let row = start.0 as usize;
-    let col = start.1 as usize;
-    
-    // Check if current cell matches the region kind
-    if grid[row][col] != region.kind {
-        return;
+impl Region {
+    fn new(plant_type: char) -> Self {
+        Self {
+            plant_type,
+            positions: HashSet::new(),
+        }
     }
     
-    // Mark this cell as visited and count it in the area
-    grid[row][col] = '_';
-    region.points.push((row, col));
-    region.area += 1;
-
-    for direction in DIRECTIONS {
-        let next = (start.0 + direction.0, start.1 + direction.1);
+    fn area(&self) -> usize {
+        self.positions.len()
+    }
+    
+    fn perimeter(&self) -> usize {
+        self.positions
+            .iter()
+            .map(|&(r, c)| {
+                DIRECTIONS
+                    .iter()
+                    .filter(|&&(dr, dc)| {
+                        let (nr, nc) = (r as i32 + dr, c as i32 + dc);
+                        nr < 0 
+                            || nc < 0 
+                            || !self.positions.contains(&(nr as usize, nc as usize))
+                    })
+                    .count()
+            })
+            .sum()
+    }
+    
+    fn sides(&self) -> usize {
+        self.positions
+            .iter()
+            .map(|&pos| self.count_corners_at(pos))
+            .sum()
+    }
+    
+    fn count_corners_at(&self, (r, c): Position) -> usize {
+        const CORNER_PATTERNS: [[(i32, i32); 4]; 4] = [
+            [(0, 0), (-1, 0), (0, -1), (-1, -1)], // Top-left
+            [(0, 0), (-1, 0), (0, 1), (-1, 1)],   // Top-right  
+            [(0, 0), (1, 0), (0, -1), (1, -1)],   // Bottom-left
+            [(0, 0), (1, 0), (0, 1), (1, 1)],     // Bottom-right
+        ];
         
-        // Check bounds
-        if next.0 < 0 || next.0 >= grid.len() as i32 || next.1 < 0 || next.1 >= grid[0].len() as i32 {
-            region.perimeter += 1;
+        CORNER_PATTERNS
+            .iter()
+            .filter(|pattern| {
+                let cells: Vec<bool> = pattern
+                    .iter()
+                    .map(|&(dr, dc)| {
+                        let (nr, nc) = (r as i32 + dr, c as i32 + dc);
+                        nr >= 0 
+                            && nc >= 0 
+                            && self.positions.contains(&(nr as usize, nc as usize))
+                    })
+                    .collect();
+                
+                // Outer corner: current cell in region, neither adjacent is
+                // Inner corner: current and both adjacent in region, diagonal is not
+                (cells[0] && !cells[1] && !cells[2]) 
+                    || (cells[0] && cells[1] && cells[2] && !cells[3])
+            })
+            .count()
+    }
+}
+
+fn flood_fill(grid: &Grid, start: Position, plant_type: char) -> Region {
+    let mut region = Region::new(plant_type);
+    let mut stack = vec![start];
+    let mut visited = HashSet::new();
+    
+    let (rows, cols) = (grid.len(), grid[0].len());
+    
+    while let Some((r, c)) = stack.pop() {
+        if visited.contains(&(r, c)) || grid[r][c] != plant_type {
             continue;
         }
         
-        let next_row = next.0 as usize;
-        let next_col = next.1 as usize;
-        let next_cell = grid[next_row][next_col];
+        visited.insert((r, c));
+        region.positions.insert((r, c));
         
-        if next_cell == region.kind {
-            explore_region(grid, region, next);
-        } else if next_cell != '_' {
-            // Different kind (not visited), adds to perimeter
-            region.perimeter += 1;
-        }
-    }
-}
-
-fn count_sides(region: &Region) -> u64 {
-    use std::collections::HashSet;
-    let points: HashSet<_> = region.points.iter().cloned().collect();
-    
-    let mut corners = 0;
-    
-    for &(r, c) in &region.points {
-        // Check all 4 possible corner configurations for this cell
-        let patterns = [
-            // Top-left corner
-            [(0, 0), (-1, 0), (0, -1), (-1, -1)],
-            // Top-right corner  
-            [(0, 0), (-1, 0), (0, 1), (-1, 1)],
-            // Bottom-left corner
-            [(0, 0), (1, 0), (0, -1), (1, -1)],
-            // Bottom-right corner
-            [(0, 0), (1, 0), (0, 1), (1, 1)],
-        ];
-        
-        for pattern in patterns {
-            let cells: Vec<bool> = pattern.iter()
-                .map(|(dr, dc)| {
-                    let nr = r as i32 + dr;
-                    let nc = c as i32 + dc;
-                    if nr >= 0 && nc >= 0 {
-                        points.contains(&(nr as usize, nc as usize))
-                    } else {
-                        false
-                    }
-                })
-                .collect();
-            
-            // Corner cases:
-            // 1. Outer corner: current cell is in region, but neither adjacent is
-            // 2. Inner corner: current cell and both adjacent are in region, but diagonal is not
-            if (cells[0] && !cells[1] && !cells[2]) ||  // Outer corner
-               (cells[0] && cells[1] && cells[2] && !cells[3]) {  // Inner corner
-                corners += 1;
+        // Add valid neighbors to stack
+        for &(dr, dc) in &DIRECTIONS {
+            let (nr, nc) = (r as i32 + dr, c as i32 + dc);
+            if nr >= 0 && nc >= 0 {
+                let (nr, nc) = (nr as usize, nc as usize);
+                if nr < rows && nc < cols && !visited.contains(&(nr, nc)) {
+                    stack.push((nr, nc));
+                }
             }
         }
     }
     
-    corners
+    region
 }
 
-fn build_regions(grid: &mut Vec<Vec<char>>) -> Vec<Region> {
+fn find_all_regions(grid: &Grid) -> Vec<Region> {
     let mut regions = Vec::new();
-
-    for row in 0..grid.len() {
-        for col in 0..grid[0].len() {
-            let cell = grid[row][col];
+    let mut visited = HashSet::new();
+    
+    for (r, row) in grid.iter().enumerate() {
+        for (c, &plant_type) in row.iter().enumerate() {
+            let pos = (r, c);
             
-            // Skip if already visited or is a separator
-            if cell == '.' || cell == '_' {
-                continue;
+            if !visited.contains(&pos) {
+                let region = flood_fill(grid, pos, plant_type);
+                
+                // Mark all positions in this region as visited
+                for &position in &region.positions {
+                    visited.insert(position);
+                }
+                
+                regions.push(region);
             }
-            
-            // Found a new region, explore it
-            let mut region = Region {
-                kind: cell,
-                perimeter: 0,
-                area: 0,
-                points: Vec::new(),
-            };
-            
-            explore_region(grid, &mut region, (row as i32, col as i32));
-            
-            for &(r, c) in &region.points {
-                grid[r][c] = '.';
-            }
-            
-            regions.push(region);
         }
     }
-
+    
     regions
 }
 
-pub fn part_one(_input: &str) -> Option<u64> {
-    let mut grid = parse_input(_input);
+pub fn part_one(input: &str) -> Option<u64> {
+    let grid = parse_input(input);
+    let regions = find_all_regions(&grid);
     
-    let regions = build_regions(&mut grid);
-    let total_price = regions.iter().map(|region| region.area * region.perimeter).sum();
-
+    let total_price = regions
+        .iter()
+        .map(|region| region.area() as u64 * region.perimeter() as u64)
+        .sum();
+    
     Some(total_price)
 }
 
-pub fn part_two(_input: &str) -> Option<u64> {
-    let mut grid = parse_input(_input);
+pub fn part_two(input: &str) -> Option<u64> {
+    let grid = parse_input(input);
+    let regions = find_all_regions(&grid);
     
-    let regions = build_regions(&mut grid);
-    let total_price = regions.iter().map(|region| region.area * count_sides(region)).sum();
-
+    let total_price = regions
+        .iter()
+        .map(|region| region.area() as u64 * region.sides() as u64)
+        .sum();
+    
     Some(total_price)
 }
 
