@@ -33,25 +33,25 @@ fn count_stones_after_blinks(stone: u64, blinks: u32, memo: &mut HashMap<(u64, u
     if blinks == 0 {
         return 1;
     }
-    
+
     if let Some(&result) = memo.get(&(stone, blinks)) {
         return result;
     }
-    
+
     let result = match stone {
         0 => count_stones_after_blinks(1, blinks - 1, memo),
         _ => {
             let digits = count_digits(stone);
             if digits % 2 == 0 {
                 let (left, right) = split_number(stone, digits);
-                count_stones_after_blinks(left, blinks - 1, memo) + 
-                count_stones_after_blinks(right, blinks - 1, memo)
+                count_stones_after_blinks(left, blinks - 1, memo)
+                    + count_stones_after_blinks(right, blinks - 1, memo)
             } else {
                 count_stones_after_blinks(stone * 2024, blinks - 1, memo)
             }
         }
     };
-    
+
     memo.insert((stone, blinks), result);
     result
 }
@@ -59,8 +59,9 @@ fn count_stones_after_blinks(stone: u64, blinks: u32, memo: &mut HashMap<(u64, u
 fn solve_with_blinks(input: &str, blinks: u32) -> u64 {
     let stones = parse_input(input);
     let mut memo = HashMap::new();
-    
-    stones.iter()
+
+    stones
+        .iter()
         .map(|&stone| count_stones_after_blinks(stone, blinks, &mut memo))
         .sum()
 }
