@@ -22,6 +22,13 @@ fn count_digits(mut n: u64) -> u32 {
     count
 }
 
+/// Split a number with even digits into left and right halves
+fn split_number(n: u64, digits: u32) -> (u64, u64) {
+    let half = digits / 2;
+    let divisor = 10u64.pow(half);
+    (n / divisor, n % divisor)
+}
+
 fn count_stones_after_blinks(stone: u64, blinks: u32, memo: &mut HashMap<(u64, u32), u64>) -> u64 {
     if blinks == 0 {
         return 1;
@@ -33,42 +40,37 @@ fn count_stones_after_blinks(stone: u64, blinks: u32, memo: &mut HashMap<(u64, u
     
     let result = match stone {
         0 => count_stones_after_blinks(1, blinks - 1, memo),
-        _ if count_digits(stone) % 2 == 0 => {
+        _ => {
             let digits = count_digits(stone);
-            let half = digits / 2;
-            let divisor = 10u64.pow(half);
-            let left = stone / divisor;
-            let right = stone % divisor;
-            count_stones_after_blinks(left, blinks - 1, memo) + 
-            count_stones_after_blinks(right, blinks - 1, memo)
-        },
-        _ => count_stones_after_blinks(stone * 2024, blinks - 1, memo),
+            if digits % 2 == 0 {
+                let (left, right) = split_number(stone, digits);
+                count_stones_after_blinks(left, blinks - 1, memo) + 
+                count_stones_after_blinks(right, blinks - 1, memo)
+            } else {
+                count_stones_after_blinks(stone * 2024, blinks - 1, memo)
+            }
+        }
     };
     
     memo.insert((stone, blinks), result);
     result
 }
 
-pub fn part_one(_input: &str) -> Option<u64> {
-    let input = parse_input(_input);
+fn solve_with_blinks(input: &str, blinks: u32) -> u64 {
+    let stones = parse_input(input);
     let mut memo = HashMap::new();
     
-    let total = input.iter()
-        .map(|&stone| count_stones_after_blinks(stone, 25, &mut memo))
-        .sum();
-    
-    Some(total)
+    stones.iter()
+        .map(|&stone| count_stones_after_blinks(stone, blinks, &mut memo))
+        .sum()
 }
 
-pub fn part_two(_input: &str) -> Option<u64> {
-    let input = parse_input(_input);
-    let mut memo = HashMap::new();
-    
-    let total = input.iter()
-        .map(|&stone| count_stones_after_blinks(stone, 75, &mut memo))
-        .sum();
-    
-    Some(total)
+pub fn part_one(input: &str) -> Option<u64> {
+    Some(solve_with_blinks(input, 25))
+}
+
+pub fn part_two(input: &str) -> Option<u64> {
+    Some(solve_with_blinks(input, 75))
 }
 
 #[cfg(test)]
