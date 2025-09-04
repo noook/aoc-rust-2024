@@ -98,10 +98,9 @@ fn count_sides(region: &Region) -> u64 {
     corners
 }
 
-pub fn part_one(_input: &str) -> Option<u64> {
-    let mut grid = parse_input(_input);
-    let mut total_price = 0;
-    
+fn build_regions(grid: &mut Vec<Vec<char>>) -> Vec<Region> {
+    let mut regions = Vec::new();
+
     for row in 0..grid.len() {
         for col in 0..grid[0].len() {
             let cell = grid[row][col];
@@ -119,50 +118,34 @@ pub fn part_one(_input: &str) -> Option<u64> {
                 points: Vec::new(),
             };
             
-            explore_region(&mut grid, &mut region, (row as i32, col as i32));
+            explore_region(grid, &mut region, (row as i32, col as i32));
+            
             for &(r, c) in &region.points {
                 grid[r][c] = '.';
             }
             
-            total_price += region.area * region.perimeter;
+            regions.push(region);
         }
     }
+
+    regions
+}
+
+pub fn part_one(_input: &str) -> Option<u64> {
+    let mut grid = parse_input(_input);
     
+    let regions = build_regions(&mut grid);
+    let total_price = regions.iter().map(|region| region.area * region.perimeter).sum();
+
     Some(total_price)
 }
 
 pub fn part_two(_input: &str) -> Option<u64> {
     let mut grid = parse_input(_input);
-    let mut total_price = 0;
     
-    for row in 0..grid.len() {
-        for col in 0..grid[0].len() {
-            let cell = grid[row][col];
-            
-            // Skip if already visited or is a separator
-            if cell == '.' || cell == '_' {
-                continue;
-            }
-            
-            let mut region = Region {
-                kind: cell,
-                perimeter: 0,
-                area: 0,
-                points: Vec::new(),
-            };
-            
-            explore_region(&mut grid, &mut region, (row as i32, col as i32));
-            
-            for &(r, c) in &region.points {
-                grid[r][c] = '.';
-            }
-            
-            // Calculate price for this region using sides instead of perimeter
-            let sides = count_sides(&region);
-            total_price += region.area * sides;
-        }
-    }
-    
+    let regions = build_regions(&mut grid);
+    let total_price = regions.iter().map(|region| region.area * count_sides(region)).sum();
+
     Some(total_price)
 }
 
