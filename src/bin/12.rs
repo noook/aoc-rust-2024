@@ -120,14 +120,8 @@ pub fn part_one(_input: &str) -> Option<u64> {
             };
             
             explore_region(&mut grid, &mut region, (row as i32, col as i32));
-            
-            // Replace all '_' with '.' for the next iteration
-            for r in 0..grid.len() {
-                for c in 0..grid[0].len() {
-                    if grid[r][c] == '_' {
-                        grid[r][c] = '.';
-                    }
-                }
+            for &(r, c) in &region.points {
+                grid[r][c] = '.';
             }
             
             total_price += region.area * region.perimeter;
@@ -159,13 +153,8 @@ pub fn part_two(_input: &str) -> Option<u64> {
             
             explore_region(&mut grid, &mut region, (row as i32, col as i32));
             
-            // Replace all '_' with '.' for the next iteration
-            for r in 0..grid.len() {
-                for c in 0..grid[0].len() {
-                    if grid[r][c] == '_' {
-                        grid[r][c] = '.';
-                    }
-                }
+            for &(r, c) in &region.points {
+                grid[r][c] = '.';
             }
             
             // Calculate price for this region using sides instead of perimeter
