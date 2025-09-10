@@ -30,7 +30,14 @@
 //! ## Implementation Notes
 //! - Part 1: Limited to 100 button presses per machine
 //! - Part 2: Unlimited presses, with 10^13 offset added to prize coordinates
+//! - Non-colinear case: direct closed-form solution (no search)
+//! - Colinear case: closed-form optimal solution using integer bounds (O(1), no k-loop)
 //! - Uses i128 for large number arithmetic to prevent overflow
+//!
+//! ## Readability & Assumptions
+//! - Math is hidden behind small, clearly named helpers with plain-English docs
+//! - Code and comments are written for a non-specialist audience
+//! - Parsing assumes well-formed AoC input (panics on malformed input)
 //! 
 //! ## Personal Reflection
 //! This puzzle was a great learning experience in advanced mathematics. While I couldn't solve it
