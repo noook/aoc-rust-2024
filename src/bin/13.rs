@@ -53,29 +53,74 @@ struct Machine {
     prize: Coord,
 }
 
-fn parse_coord(s: &str, sep: char, delim: char) -> Coord {
-    let (x, y) = s.split_once(delim).unwrap();
-    Coord {
-        x: x.split_once(sep).unwrap().1.parse().unwrap(),
-        y: y.split_once(sep).unwrap().1.parse().unwrap(),
+/// Parsing error types
+#[derive(Debug)]
+enum ParseError {
+    InvalidCoord(String),
+    InvalidMachine(String),
+    InvalidNumber(String),
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::InvalidCoord(msg) => write!(f, "Invalid coordinate format: {}", msg),
+            ParseError::InvalidMachine(msg) => write!(f, "Invalid machine format: {}", msg),
+            ParseError::InvalidNumber(msg) => write!(f, "Invalid number: {}", msg),
+        }
     }
 }
 
-fn parse_input(input: &str) -> Vec<Machine> {
+impl std::error::Error for ParseError {}
 
+/// Parses a coordinate string like "X+94, Y+34" or "X=8400, Y=5400"
+fn parse_coord(s: &str, sep: char, delim: char) -> Result<Coord, ParseError> {
+    let (x_part, y_part) = s.split_once(delim)
+        .ok_or_else(|| ParseError::InvalidCoord(format!("Missing delimiter '{}' in: {}", delim, s)))?;
+    
+    let x = x_part.split_once(sep)
+        .ok_or_else(|| ParseError::InvalidCoord(format!("Missing separator '{}' in X part: {}", sep, x_part)))?
+        .1
+        .parse::<i128>()
+        .map_err(|e| ParseError::InvalidNumber(format!("Invalid X coordinate '{}': {}", x_part, e)))?;
+    
+    let y = y_part.split_once(sep)
+        .ok_or_else(|| ParseError::InvalidCoord(format!("Missing separator '{}' in Y part: {}", sep, y_part)))?
+        .1
+        .parse::<i128>()
+        .map_err(|e| ParseError::InvalidNumber(format!("Invalid Y coordinate '{}': {}", y_part, e)))?;
+    
+    Ok(Coord { x, y })
+}
+
+/// Parses the input string into a vector of machines
+fn parse_input(input: &str) -> Result<Vec<Machine>, ParseError> {
     input
         .split("\n\n")
-        .map(|machine| {
-            let mut lines = machine.lines();
-            let a = lines.next().unwrap().strip_prefix("Button A: ").unwrap();
-            let b = lines.next().unwrap().strip_prefix("Button B: ").unwrap();
-            let prize = lines.next().unwrap().strip_prefix("Prize: ").unwrap();
+        .enumerate()
+        .map(|(i, machine_str)| {
+            let mut lines = machine_str.lines();
+            
+            let a_line = lines.next()
+                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Missing Button A line", i + 1)))?;
+            let a = a_line.strip_prefix("Button A: ")
+                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Invalid Button A format: {}", i + 1, a_line)))?;
+            
+            let b_line = lines.next()
+                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Missing Button B line", i + 1)))?;
+            let b = b_line.strip_prefix("Button B: ")
+                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Invalid Button B format: {}", i + 1, b_line)))?;
+            
+            let prize_line = lines.next()
+                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Missing Prize line", i + 1)))?;
+            let prize = prize_line.strip_prefix("Prize: ")
+                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Invalid Prize format: {}", i + 1, prize_line)))?;
 
-            Machine {
-                a: parse_coord(a, '+', ','),
-                b: parse_coord(b, '+', ','),
-                prize: parse_coord(prize, '=', ','),
-            }
+            Ok(Machine {
+                a: parse_coord(a, '+', ',')?,
+                b: parse_coord(b, '+', ',')?,
+                prize: parse_coord(prize, '=', ',')?,
+            })
         })
         .collect()
 }
@@ -92,7 +137,39 @@ fn extended_gcd(a: i128, b: i128) -> (i128, i128, i128) {
     }
 }
 
-fn find_min_tokens(machine: &Machine) -> Option<u64> {
+/// Configuration for solving claw machines
+#[derive(Debug, Clone, Copy)]
+struct SolverConfig {
+    /// Maximum number of button presses allowed (None = unlimited)
+    max_presses: Option<i128>,
+    /// Cost per A button press
+    cost_a: i128,
+    /// Cost per B button press  
+    cost_b: i128,
+}
+
+impl SolverConfig {
+    /// Configuration for Part 1 (limited presses)
+    fn part_one() -> Self {
+        Self {
+            max_presses: Some(100),
+            cost_a: 3,
+            cost_b: 1,
+        }
+    }
+    
+    /// Configuration for Part 2 (unlimited presses)
+    fn part_two() -> Self {
+        Self {
+            max_presses: None,
+            cost_a: 3,
+            cost_b: 1,
+        }
+    }
+}
+
+/// Solves a single claw machine with the given configuration
+fn solve_machine(machine: &Machine, config: SolverConfig) -> Option<u64> {
     let Machine { 
         a: Coord { x: ax, y: ay }, 
         b: Coord { x: bx, y: by }, 
@@ -105,37 +182,50 @@ fn find_min_tokens(machine: &Machine) -> Option<u64> {
 
     if det != 0 {
         // Non-colinear case: use Cramer's rule
-        let n_a_num = px * by - py * bx;
-        let n_b_num = ax * py - ay * px;
+        solve_non_colinear(ax, ay, bx, by, px, py, config)
+    } else {
+        // Colinear case: use GCD approach
+        solve_colinear(ax, ay, bx, by, px, py, config)
+    }
+}
 
-        if n_a_num % det != 0 || n_b_num % det != 0 {
-            return None;
-        }
+/// Solves the non-colinear case using Cramer's rule
+fn solve_non_colinear(ax: i128, ay: i128, bx: i128, by: i128, px: i128, py: i128, config: SolverConfig) -> Option<u64> {
+    let det = ax * by - ay * bx;
+    let n_a_num = px * by - py * bx;
+    let n_b_num = ax * py - ay * px;
 
-        let n_a = n_a_num / det;
-        let n_b = n_b_num / det;
-
-        if n_a < 0 || n_b < 0 {
-            return None;
-        }
-
-        // Part 1 constraint: at most 100 presses each
-        if n_a > 100 || n_b > 100 {
-            return None;
-        }
-
-        let cost = 3_i128 * n_a + 1_i128 * n_b;
-        return Some(cost as u64);
+    if n_a_num % det != 0 || n_b_num % det != 0 {
+        return None;
     }
 
-    // det == 0: colinear case - use GCD approach
+    let n_a = n_a_num / det;
+    let n_b = n_b_num / det;
+
+    if n_a < 0 || n_b < 0 {
+        return None;
+    }
+
+    // Check press limits if configured
+    if let Some(max) = config.max_presses {
+        if n_a > max || n_b > max {
+            return None;
+        }
+    }
+
+    let cost = config.cost_a * n_a + config.cost_b * n_b;
+    Some(cost as u64)
+}
+
+/// Solves the colinear case using Extended GCD
+fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, config: SolverConfig) -> Option<u64> {
     // Check if prize is on the same line as the moves
     if ax * py - ay * px != 0 {
         return None; // Prize not on the same line
     }
 
     // Reduce to 1D problem: find n_a, n_b such that ax*n_a + bx*n_b = px
-    // and minimize cost = 3*n_a + n_b
+    // and minimize cost = cost_a*n_a + cost_b*n_b
     
     if ax == 0 && bx == 0 {
         return if px == 0 { Some(0) } else { None };
@@ -147,10 +237,15 @@ fn find_min_tokens(machine: &Machine) -> Option<u64> {
             return None;
         }
         let n_b = px / bx;
-        if n_b < 0 || n_b > 100 {
+        if n_b < 0 {
             return None;
         }
-        return Some(n_b as u64);
+        if let Some(max) = config.max_presses {
+            if n_b > max {
+                return None;
+            }
+        }
+        return Some((config.cost_b * n_b) as u64);
     }
     
     if bx == 0 {
@@ -159,10 +254,15 @@ fn find_min_tokens(machine: &Machine) -> Option<u64> {
             return None;
         }
         let n_a = px / ax;
-        if n_a < 0 || n_a > 100 {
+        if n_a < 0 {
             return None;
         }
-        return Some((3 * n_a) as u64);
+        if let Some(max) = config.max_presses {
+            if n_a > max {
+                return None;
+            }
+        }
+        return Some((config.cost_a * n_a) as u64);
     }
 
     // Both moves: use extended GCD to find one solution
@@ -182,16 +282,29 @@ fn find_min_tokens(machine: &Machine) -> Option<u64> {
     let step_a = bx / gcd;
     let step_b = ax / gcd;
     
-    // Find the range of k that gives n_a, n_b >= 0
+    find_optimal_solution(n_a, n_b, step_a, step_b, config)
+}
+
+/// Finds the optimal solution by searching the parameter space
+fn find_optimal_solution(n_a: i128, n_b: i128, step_a: i128, step_b: i128, config: SolverConfig) -> Option<u64> {
     let mut best_cost: Option<i128> = None;
     
-    // Try k values around the initial solution
-    for k in -200..=200 {
+    // Determine search range based on configuration
+    let search_range = if config.max_presses.is_some() { 200 } else { 1000 };
+    
+    for k in -search_range..=search_range {
         let test_a = n_a + k * step_a;
         let test_b = n_b - k * step_b;
         
-        if test_a >= 0 && test_b >= 0 && test_a <= 100 && test_b <= 100 {
-            let cost = 3 * test_a + test_b;
+        if test_a >= 0 && test_b >= 0 {
+            // Check press limits if configured
+            if let Some(max) = config.max_presses {
+                if test_a > max || test_b > max {
+                    continue;
+                }
+            }
+            
+            let cost = config.cost_a * test_a + config.cost_b * test_b;
             best_cost = match best_cost {
                 Some(prev) => Some(prev.min(cost)),
                 None => Some(cost),
@@ -202,14 +315,17 @@ fn find_min_tokens(machine: &Machine) -> Option<u64> {
     best_cost.map(|c| c as u64)
 }
 
-pub fn part_one(_input: &str) -> Option<u64> {
-    let machines = parse_input(_input);
-    let total: u64 = machines.iter().filter_map(find_min_tokens).sum();
+/// Solves Part 1: Find minimum tokens with 100-press limit per machine
+pub fn part_one(input: &str) -> Option<u64> {
+    let machines = parse_input(input).ok()?;
+    let config = SolverConfig::part_one();
+    let total: u64 = machines.iter().filter_map(|machine| solve_machine(machine, config)).sum();
     Some(total)
 }
 
-pub fn part_two(_input: &str) -> Option<u64> {
-    let mut machines = parse_input(_input);
+/// Solves Part 2: Find minimum tokens with unlimited presses and offset applied
+pub fn part_two(input: &str) -> Option<u64> {
+    let mut machines = parse_input(input).ok()?;
     
     // Add 10000000000000 to both X and Y coordinates of every prize
     const OFFSET: i128 = 10000000000000;
@@ -218,103 +334,8 @@ pub fn part_two(_input: &str) -> Option<u64> {
         machine.prize.y += OFFSET;
     }
     
-    // Remove the 100-press constraint for Part 2
-    let total: u64 = machines.iter().filter_map(|machine| {
-        let Machine { 
-            a: Coord { x: ax, y: ay }, 
-            b: Coord { x: bx, y: by }, 
-            prize: Coord { x: px, y: py } 
-        } = machine;
-        
-        let (ax, ay, bx, by, px, py) = (*ax, *ay, *bx, *by, *px, *py);
-        
-        let det = ax * by - ay * bx;
-        
-        if det != 0 {
-            // Non-colinear case: use Cramer's rule
-            let n_a_num = px * by - py * bx;
-            let n_b_num = ax * py - ay * px;
-            
-            if n_a_num % det != 0 || n_b_num % det != 0 {
-                return None;
-            }
-            
-            let n_a = n_a_num / det;
-            let n_b = n_b_num / det;
-            
-            if n_a < 0 || n_b < 0 {
-                return None;
-            }
-            
-            // No 100-press constraint for Part 2
-            let cost = 3_i128 * n_a + 1_i128 * n_b;
-            return Some(cost as u64);
-        }
-        
-        // det == 0: colinear case - use GCD approach (no 100-press constraint)
-        if ax * py - ay * px != 0 {
-            return None; // Prize not on the same line
-        }
-        
-        if ax == 0 && bx == 0 {
-            return if px == 0 { Some(0) } else { None };
-        }
-        
-        if ax == 0 {
-            if px % bx != 0 {
-                return None;
-            }
-            let n_b = px / bx;
-            if n_b < 0 {
-                return None;
-            }
-            return Some(n_b as u64);
-        }
-        
-        if bx == 0 {
-            if px % ax != 0 {
-                return None;
-            }
-            let n_a = px / ax;
-            if n_a < 0 {
-                return None;
-            }
-            return Some((3 * n_a) as u64);
-        }
-        
-        // Both moves: use extended GCD
-        let (gcd, x, y) = extended_gcd(ax, bx);
-        
-        if px % gcd != 0 {
-            return None;
-        }
-        
-        let scale = px / gcd;
-        let n_a = x * scale;
-        let n_b = y * scale;
-        
-        let step_a = bx / gcd;
-        let step_b = ax / gcd;
-        
-        let mut best_cost: Option<i128> = None;
-        
-        // Try k values around the initial solution (wider range for Part 2)
-        for k in -1000..=1000 {
-            let test_a = n_a + k * step_a;
-            let test_b = n_b - k * step_b;
-            
-            if test_a >= 0 && test_b >= 0 {
-                let cost = 3 * test_a + test_b;
-                best_cost = match best_cost {
-                    Some(prev) => Some(prev.min(cost)),
-                    None => Some(cost),
-                };
-            }
-        }
-        
-        best_cost.map(|c| c as u64)
-    }).sum();
-    
+    let config = SolverConfig::part_two();
+    let total: u64 = machines.iter().filter_map(|machine| solve_machine(machine, config)).sum();
     Some(total)
 }
 
