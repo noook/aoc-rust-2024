@@ -1,32 +1,32 @@
 //! # Day 13: Claw Contraption
-//! 
+//!
 //! ## Problem Summary
 //! This puzzle involves claw machines with two buttons (A and B) that move the claw by fixed vectors.
 //! The goal is to find the minimum token cost to position the claw exactly on each prize.
-//! 
+//!
 //! ## Mathematical Approach
 //! This problem required advanced mathematical concepts that were beyond my initial knowledge:
-//! 
+//!
 //! ### Linear Algebra (Cramer's Rule)
 //! - For non-colinear moves (det ≠ 0): Use Cramer's rule to solve the 2×2 linear system
 //! - Formula: det = ax × by - ay × bx
 //! - Solutions: nA = (px × by - py × bx) ÷ det, nB = (ax × py - ay × px) ÷ det
-//! 
+//!
 //! ### Number Theory (Extended GCD)
 //! - For colinear moves (det = 0): Reduce to 1D and use Extended GCD
 //! - Find one solution to ax × nA + bx × nB = px
 //! - Parameterize all solutions and find the minimum cost
-//! 
+//!
 //! ## Learning Journey
 //! - **Initial approach**: Attempted brute force and basic linear algebra
-//! - **Challenge**: The mathematical theory required (determinants, GCD, linear Diophantine equations) 
+//! - **Challenge**: The mathematical theory required (determinants, GCD, linear Diophantine equations)
 //!   was beyond my high school math background
 //! - **Collaboration**: Worked with AI assistant to understand the mathematical foundations
 //! - **Key insights learned**:
 //!   - How determinants determine solvability of linear systems
 //!   - Extended GCD algorithm for integer solutions
 //!   - Parameterization of solutions in linear Diophantine equations
-//! 
+//!
 //! ## Implementation Notes
 //! - Part 1: Limited to 100 button presses per machine
 //! - Part 2: Unlimited presses, with 10^13 offset added to prize coordinates
@@ -38,7 +38,7 @@
 //! - Math is hidden behind small, clearly named helpers with plain-English docs
 //! - Code and comments are written for a non-specialist audience
 //! - Parsing assumes well-formed AoC input (panics on malformed input)
-//! 
+//!
 //! ## Personal Reflection
 //! This puzzle was a great learning experience in advanced mathematics. While I couldn't solve it
 //! independently due to my limited math education, the collaborative problem-solving process
@@ -78,7 +78,11 @@ fn parse_input(input: &str) -> Vec<Machine> {
             let a = lines.next().unwrap().strip_prefix("Button A: ").unwrap();
             let b = lines.next().unwrap().strip_prefix("Button B: ").unwrap();
             let prize = lines.next().unwrap().strip_prefix("Prize: ").unwrap();
-            Machine { a: parse_coord(a, '+', ','), b: parse_coord(b, '+', ','), prize: parse_coord(prize, '=', ',') }
+            Machine {
+                a: parse_coord(a, '+', ','),
+                b: parse_coord(b, '+', ','),
+                prize: parse_coord(prize, '=', ','),
+            }
         })
         .collect()
 }
@@ -115,7 +119,7 @@ impl SolverConfig {
             cost_b: 1,
         }
     }
-    
+
     /// Configuration for Part 2 (unlimited presses)
     fn part_two() -> Self {
         Self {
@@ -134,12 +138,12 @@ impl SolverConfig {
 /// - If the two moves are along the same line (colinear), there are many ways to combine them.
 ///   We pick the cheapest combination that meets the constraints.
 fn solve_machine(machine: &Machine, config: SolverConfig) -> Option<u64> {
-    let Machine { 
-        a: Coord { x: ax, y: ay }, 
-        b: Coord { x: bx, y: by }, 
-        prize: Coord { x: px, y: py } 
+    let Machine {
+        a: Coord { x: ax, y: ay },
+        b: Coord { x: bx, y: by },
+        prize: Coord { x: px, y: py },
     } = machine;
-    
+
     let (ax, ay, bx, by, px, py) = (*ax, *ay, *bx, *by, *px, *py);
 
     let det = ax * by - ay * bx;
@@ -157,7 +161,15 @@ fn solve_machine(machine: &Machine, config: SolverConfig) -> Option<u64> {
 ///
 /// Idea: two move vectors form a 2×2 system with a unique real solution. We accept it if and
 /// only if it yields nonnegative integers (and respects the optional press limit).
-fn solve_non_colinear(ax: i128, ay: i128, bx: i128, by: i128, px: i128, py: i128, config: SolverConfig) -> Option<u64> {
+fn solve_non_colinear(
+    ax: i128,
+    ay: i128,
+    bx: i128,
+    by: i128,
+    px: i128,
+    py: i128,
+    config: SolverConfig,
+) -> Option<u64> {
     let det = ax * by - ay * bx;
     let n_a_num = px * by - py * bx;
     let n_b_num = ax * py - ay * px;
@@ -188,7 +200,15 @@ fn solve_non_colinear(ax: i128, ay: i128, bx: i128, by: i128, px: i128, py: i128
 ///
 /// Idea: reduce to 1D equation ax*nA + bx*nB = px, find one integer solution with extended GCD,
 /// then slide along all solutions to satisfy constraints and minimize cost in O(1).
-fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, config: SolverConfig) -> Option<u64> {
+fn solve_colinear(
+    ax: i128,
+    ay: i128,
+    bx: i128,
+    _by: i128,
+    px: i128,
+    py: i128,
+    config: SolverConfig,
+) -> Option<u64> {
     // Check if prize is on the same line as the moves
     if ax * py - ay * px != 0 {
         return None; // Prize not on the same line
@@ -196,11 +216,11 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
 
     // Reduce to 1D problem: find n_a, n_b such that ax*n_a + bx*n_b = px
     // and minimize cost = cost_a*n_a + cost_b*n_b
-    
+
     if ax == 0 && bx == 0 {
         return if px == 0 { Some(0) } else { None };
     }
-    
+
     if ax == 0 {
         // Only B moves: bx * n_b = px
         if px % bx != 0 {
@@ -217,7 +237,7 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
         }
         return Some((config.cost_b * n_b) as u64);
     }
-    
+
     if bx == 0 {
         // Only A moves: ax * n_a = px
         if px % ax != 0 {
@@ -237,16 +257,16 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
 
     // Both moves: use extended GCD to find one solution
     let (gcd, x, y) = extended_gcd(ax, bx);
-    
+
     if px % gcd != 0 {
         return None; // No integer solution
     }
-    
+
     // One solution: n_a = x * (px/gcd), n_b = y * (px/gcd)
     let scale = px / gcd;
     let n_a = x * scale;
     let n_b = y * scale;
-    
+
     // Adjust to find non-negative solutions in closed form (no k-loop)
     // General solution: n_a = n_a0 + k*t, n_b = n_b0 - k*s
     let t = bx / gcd; // step for n_a when k increases by 1
@@ -254,16 +274,22 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
 
     // Helper closures for integer ceil/floor division with i128
     let ceil_div = |a: i128, b: i128| -> i128 {
-        if b == 0 { return 0; }
-        if (a ^ b) >= 0 { // same sign
+        if b == 0 {
+            return 0;
+        }
+        if (a ^ b) >= 0 {
+            // same sign
             (a + (b.abs() - 1)) / b
         } else {
             a / b
         }
     };
     let floor_div = |a: i128, b: i128| -> i128 {
-        if b == 0 { return 0; }
-        if (a ^ b) >= 0 { // same sign
+        if b == 0 {
+            return 0;
+        }
+        if (a ^ b) >= 0 {
+            // same sign
             a / b
         } else {
             (a - (b.abs() - 1)) / b
@@ -284,17 +310,31 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
         k_min = k_min.max(ceil_div(n_b - max, s));
     }
 
-    if k_min > k_max { return None; }
+    if k_min > k_max {
+        return None;
+    }
 
     // Cost as a function of k: C(k) = c_a*(n_a0 + k*t) + c_b*(n_b0 - k*s)
     // => C(k) = C0 + k*(c_a*t - c_b*s). Monotonic in k.
     let slope = config.cost_a * t - config.cost_b * s;
-    let k_star = if slope < 0 { k_max } else if slope > 0 { k_min } else { k_min }; // flat: any feasible; pick k_min
+    let k_star = if slope < 0 {
+        k_max
+    } else if slope > 0 {
+        k_min
+    } else {
+        k_min
+    }; // flat: any feasible; pick k_min
 
     let best_a = n_a + k_star * t;
     let best_b = n_b - k_star * s;
-    if best_a < 0 || best_b < 0 { return None; }
-    if let Some(max) = config.max_presses { if best_a > max || best_b > max { return None; } }
+    if best_a < 0 || best_b < 0 {
+        return None;
+    }
+    if let Some(max) = config.max_presses {
+        if best_a > max || best_b > max {
+            return None;
+        }
+    }
 
     let cost = config.cost_a * best_a + config.cost_b * best_b;
     Some(cost as u64)
@@ -304,23 +344,29 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
 pub fn part_one(input: &str) -> Option<u64> {
     let machines = parse_input(input);
     let config = SolverConfig::part_one();
-    let total: u64 = machines.iter().filter_map(|machine| solve_machine(machine, config)).sum();
+    let total: u64 = machines
+        .iter()
+        .filter_map(|machine| solve_machine(machine, config))
+        .sum();
     Some(total)
 }
 
 /// Solves Part 2: Find minimum tokens with unlimited presses and offset applied
 pub fn part_two(input: &str) -> Option<u64> {
     let mut machines = parse_input(input);
-    
+
     // Add 10000000000000 to both X and Y coordinates of every prize
     const OFFSET: i128 = 10000000000000;
     for machine in &mut machines {
         machine.prize.x += OFFSET;
         machine.prize.y += OFFSET;
     }
-    
+
     let config = SolverConfig::part_two();
-    let total: u64 = machines.iter().filter_map(|machine| solve_machine(machine, config)).sum();
+    let total: u64 = machines
+        .iter()
+        .filter_map(|machine| solve_machine(machine, config))
+        .sum();
     Some(total)
 }
 
@@ -337,6 +383,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(200)); // Only machines 2 and 4 are solvable in Part 2
+        assert_eq!(result, Some(875318608908)); // Only machines 2 and 4 are solvable in Part 2
     }
 }
