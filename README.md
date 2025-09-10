@@ -37,8 +37,9 @@ All solutions are optimized for performance with comprehensive benchmarking. Exe
 | [Day 11](./src/bin/11.rs) | `104.6µs` | `6.9ms` |
 | [Day 12](./src/bin/12.rs) | `4.5ms` | `8.2ms` |
 | [Day 13](./src/bin/13.rs) | `37.2µs` | `36.9µs` |
+| [Day 14](./src/bin/14.rs) | `21.4µs` | `571.4ms` |
 
-**Total: 102.82ms**
+**Total: 674.24ms**
 <!--- benchmarking table --->
 
 ## 🧠 Development Approach
