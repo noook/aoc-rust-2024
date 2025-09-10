@@ -40,7 +40,7 @@
 
 advent_of_code::solution!(13);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Coord {
     x: i128,
     y: i128,
@@ -53,74 +53,25 @@ struct Machine {
     prize: Coord,
 }
 
-/// Parsing error types
-#[derive(Debug)]
-enum ParseError {
-    InvalidCoord(String),
-    InvalidMachine(String),
-    InvalidNumber(String),
+/// Parse a coordinate like "X+94, Y+34" or "X=8400, Y=5400".
+/// Assumes well-formed input per AoC (panics on malformed input).
+fn parse_coord(s: &str, sep: char, delim: char) -> Coord {
+    let (x_part, y_part) = s.split_once(delim).unwrap();
+    let x = x_part.split_once(sep).unwrap().1.parse::<i128>().unwrap();
+    let y = y_part.split_once(sep).unwrap().1.parse::<i128>().unwrap();
+    Coord { x, y }
 }
 
-impl std::fmt::Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseError::InvalidCoord(msg) => write!(f, "Invalid coordinate format: {}", msg),
-            ParseError::InvalidMachine(msg) => write!(f, "Invalid machine format: {}", msg),
-            ParseError::InvalidNumber(msg) => write!(f, "Invalid number: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for ParseError {}
-
-/// Parses a coordinate string like "X+94, Y+34" or "X=8400, Y=5400"
-fn parse_coord(s: &str, sep: char, delim: char) -> Result<Coord, ParseError> {
-    let (x_part, y_part) = s.split_once(delim)
-        .ok_or_else(|| ParseError::InvalidCoord(format!("Missing delimiter '{}' in: {}", delim, s)))?;
-    
-    let x = x_part.split_once(sep)
-        .ok_or_else(|| ParseError::InvalidCoord(format!("Missing separator '{}' in X part: {}", sep, x_part)))?
-        .1
-        .parse::<i128>()
-        .map_err(|e| ParseError::InvalidNumber(format!("Invalid X coordinate '{}': {}", x_part, e)))?;
-    
-    let y = y_part.split_once(sep)
-        .ok_or_else(|| ParseError::InvalidCoord(format!("Missing separator '{}' in Y part: {}", sep, y_part)))?
-        .1
-        .parse::<i128>()
-        .map_err(|e| ParseError::InvalidNumber(format!("Invalid Y coordinate '{}': {}", y_part, e)))?;
-    
-    Ok(Coord { x, y })
-}
-
-/// Parses the input string into a vector of machines
-fn parse_input(input: &str) -> Result<Vec<Machine>, ParseError> {
+/// Parse the full input into machines (assumes well-formed AoC input).
+fn parse_input(input: &str) -> Vec<Machine> {
     input
         .split("\n\n")
-        .enumerate()
-        .map(|(i, machine_str)| {
+        .map(|machine_str| {
             let mut lines = machine_str.lines();
-            
-            let a_line = lines.next()
-                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Missing Button A line", i + 1)))?;
-            let a = a_line.strip_prefix("Button A: ")
-                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Invalid Button A format: {}", i + 1, a_line)))?;
-            
-            let b_line = lines.next()
-                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Missing Button B line", i + 1)))?;
-            let b = b_line.strip_prefix("Button B: ")
-                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Invalid Button B format: {}", i + 1, b_line)))?;
-            
-            let prize_line = lines.next()
-                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Missing Prize line", i + 1)))?;
-            let prize = prize_line.strip_prefix("Prize: ")
-                .ok_or_else(|| ParseError::InvalidMachine(format!("Machine {}: Invalid Prize format: {}", i + 1, prize_line)))?;
-
-            Ok(Machine {
-                a: parse_coord(a, '+', ',')?,
-                b: parse_coord(b, '+', ',')?,
-                prize: parse_coord(prize, '=', ',')?,
-            })
+            let a = lines.next().unwrap().strip_prefix("Button A: ").unwrap();
+            let b = lines.next().unwrap().strip_prefix("Button B: ").unwrap();
+            let prize = lines.next().unwrap().strip_prefix("Prize: ").unwrap();
+            Machine { a: parse_coord(a, '+', ','), b: parse_coord(b, '+', ','), prize: parse_coord(prize, '=', ',') }
         })
         .collect()
 }
@@ -168,7 +119,13 @@ impl SolverConfig {
     }
 }
 
-/// Solves a single claw machine with the given configuration
+/// Solve one machine.
+///
+/// Plain-English summary:
+/// - If the two moves point in different directions (not colinear), there is at most one way
+///   to land exactly on the prize. We compute that directly.
+/// - If the two moves are along the same line (colinear), there are many ways to combine them.
+///   We pick the cheapest combination that meets the constraints.
 fn solve_machine(machine: &Machine, config: SolverConfig) -> Option<u64> {
     let Machine { 
         a: Coord { x: ax, y: ay }, 
@@ -189,7 +146,10 @@ fn solve_machine(machine: &Machine, config: SolverConfig) -> Option<u64> {
     }
 }
 
-/// Solves the non-colinear case using Cramer's rule
+/// Non-colinear case: direct closed-form solution.
+///
+/// Idea: two move vectors form a 2×2 system with a unique real solution. We accept it if and
+/// only if it yields nonnegative integers (and respects the optional press limit).
 fn solve_non_colinear(ax: i128, ay: i128, bx: i128, by: i128, px: i128, py: i128, config: SolverConfig) -> Option<u64> {
     let det = ax * by - ay * bx;
     let n_a_num = px * by - py * bx;
@@ -217,7 +177,10 @@ fn solve_non_colinear(ax: i128, ay: i128, bx: i128, by: i128, px: i128, py: i128
     Some(cost as u64)
 }
 
-/// Solves the colinear case using Extended GCD
+/// Colinear case: integer combinations along one line.
+///
+/// Idea: reduce to 1D equation ax*nA + bx*nB = px, find one integer solution with extended GCD,
+/// then slide along all solutions to satisfy constraints and minimize cost in O(1).
 fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, config: SolverConfig) -> Option<u64> {
     // Check if prize is on the same line as the moves
     if ax * py - ay * px != 0 {
@@ -277,47 +240,62 @@ fn solve_colinear(ax: i128, ay: i128, bx: i128, _by: i128, px: i128, py: i128, c
     let n_a = x * scale;
     let n_b = y * scale;
     
-    // Adjust to find non-negative solutions
-    // General solution: n_a = n_a0 + k*(bx/gcd), n_b = n_b0 - k*(ax/gcd)
-    let step_a = bx / gcd;
-    let step_b = ax / gcd;
-    
-    find_optimal_solution(n_a, n_b, step_a, step_b, config)
-}
+    // Adjust to find non-negative solutions in closed form (no k-loop)
+    // General solution: n_a = n_a0 + k*t, n_b = n_b0 - k*s
+    let t = bx / gcd; // step for n_a when k increases by 1
+    let s = ax / gcd; // step for n_b when k increases by 1
 
-/// Finds the optimal solution by searching the parameter space
-fn find_optimal_solution(n_a: i128, n_b: i128, step_a: i128, step_b: i128, config: SolverConfig) -> Option<u64> {
-    let mut best_cost: Option<i128> = None;
-    
-    // Determine search range based on configuration
-    let search_range = if config.max_presses.is_some() { 200 } else { 1000 };
-    
-    for k in -search_range..=search_range {
-        let test_a = n_a + k * step_a;
-        let test_b = n_b - k * step_b;
-        
-        if test_a >= 0 && test_b >= 0 {
-            // Check press limits if configured
-            if let Some(max) = config.max_presses {
-                if test_a > max || test_b > max {
-                    continue;
-                }
-            }
-            
-            let cost = config.cost_a * test_a + config.cost_b * test_b;
-            best_cost = match best_cost {
-                Some(prev) => Some(prev.min(cost)),
-                None => Some(cost),
-            };
+    // Helper closures for integer ceil/floor division with i128
+    let ceil_div = |a: i128, b: i128| -> i128 {
+        if b == 0 { return 0; }
+        if (a ^ b) >= 0 { // same sign
+            (a + (b.abs() - 1)) / b
+        } else {
+            a / b
         }
+    };
+    let floor_div = |a: i128, b: i128| -> i128 {
+        if b == 0 { return 0; }
+        if (a ^ b) >= 0 { // same sign
+            a / b
+        } else {
+            (a - (b.abs() - 1)) / b
+        }
+    };
+
+    // Feasibility ranges from nonnegativity
+    // n_a = n_a0 + k*t >= 0  =>  k >= ceil_div(-n_a0, t)
+    // n_b = n_b0 - k*s >= 0  =>  k <= floor_div(n_b0, s)
+    let mut k_min = ceil_div(-n_a, t);
+    let mut k_max = floor_div(n_b, s);
+
+    // Add press-limit constraints if configured
+    if let Some(max) = config.max_presses {
+        // n_a <= max  =>  n_a0 + k*t <= max  =>  k <= floor_div(max - n_a0, t)
+        // n_b <= max  =>  n_b0 - k*s <= max  =>  k >= ceil_div(n_b0 - max, s)
+        k_max = k_max.min(floor_div(max - n_a, t));
+        k_min = k_min.max(ceil_div(n_b - max, s));
     }
-    
-    best_cost.map(|c| c as u64)
+
+    if k_min > k_max { return None; }
+
+    // Cost as a function of k: C(k) = c_a*(n_a0 + k*t) + c_b*(n_b0 - k*s)
+    // => C(k) = C0 + k*(c_a*t - c_b*s). Monotonic in k.
+    let slope = config.cost_a * t - config.cost_b * s;
+    let k_star = if slope < 0 { k_max } else if slope > 0 { k_min } else { k_min }; // flat: any feasible; pick k_min
+
+    let best_a = n_a + k_star * t;
+    let best_b = n_b - k_star * s;
+    if best_a < 0 || best_b < 0 { return None; }
+    if let Some(max) = config.max_presses { if best_a > max || best_b > max { return None; } }
+
+    let cost = config.cost_a * best_a + config.cost_b * best_b;
+    Some(cost as u64)
 }
 
 /// Solves Part 1: Find minimum tokens with 100-press limit per machine
 pub fn part_one(input: &str) -> Option<u64> {
-    let machines = parse_input(input).ok()?;
+    let machines = parse_input(input);
     let config = SolverConfig::part_one();
     let total: u64 = machines.iter().filter_map(|machine| solve_machine(machine, config)).sum();
     Some(total)
@@ -325,7 +303,7 @@ pub fn part_one(input: &str) -> Option<u64> {
 
 /// Solves Part 2: Find minimum tokens with unlimited presses and offset applied
 pub fn part_two(input: &str) -> Option<u64> {
-    let mut machines = parse_input(input).ok()?;
+    let mut machines = parse_input(input);
     
     // Add 10000000000000 to both X and Y coordinates of every prize
     const OFFSET: i128 = 10000000000000;
